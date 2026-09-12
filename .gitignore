@@ -1,0 +1,20 @@
+# Raw camera captures (~391 MB across images/photos/).
+# The JPG of every shot is committed; the CR2 raws are kept locally only so the
+# repository stays clonable. Delete this line if you want them tracked.
+*.CR2
+
+# 3D model (28.6 MB) kept locally only.
+*.stl
+
+# Artifacts produced by the demo scripts in scripts/ (see scripts/cleanup.sh)
+*.ctx
+*.pub
+*.priv
+policy.bin
+sig.bin
+data.txt
+secret.txt
+test.img
+cert.pem
+rsa_tpm_key.pem
+rsa_tpm_key.pub.pem

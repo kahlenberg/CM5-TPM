@@ -1,9 +1,319 @@
+# CM4/5 TPM Module
 
-# CM4/CM5 TPM 2.0 Demo
+**Trusted Platform Module stack-up for the Raspberry Pi Compute Module 4 & 5**
+
+TPM IC: Infineon OPTIGA™ TPM SLB 9670VQ2.0 · Interface: SPI · Standard: TCG TPM 2.0
+Revision 1.0 — 12 September 2026
+
+<p align="center">
+  <img src="images/board-top.png" alt="CM4/5 TPM Module Rev 1.0, top side" width="47%">
+  <img src="images/board-bottom.png" alt="CM4/5 TPM Module Rev 1.0, bottom side" width="47%">
+</p>
+
+This repository holds the hardware documentation for the CM4/5 TPM Module together with
+runnable software demos for the TPM features it exposes. The hardware chapters below are the
+contents of [`docs/CM5_TPM_datasheet.pdf`](docs/CM5_TPM_datasheet.pdf); the
+[software section](#software) covers bring-up and the worked examples.
+
+- [Hardware](#hardware)
+  - [1. Overview](#1-overview)
+  - [2. Ordering information](#2-ordering-information)
+  - [3. Connector and signal description](#3-connector-and-signal-description)
+  - [4. Electrical characteristics](#4-electrical-characteristics)
+  - [5. TPM properties](#5-tpm-properties)
+  - [6. Reset timing](#6-reset-timing)
+  - [7. Mechanical dimensions](#7-mechanical-dimensions)
+  - [8. Compliance and certifications](#8-compliance-and-certifications)
+  - [9. References](#9-references)
+- [Software](#software)
+  - [Quick start](#quick-start)
+  - [Examples](#examples)
+- [Repository layout](#repository-layout)
+
+---
+
+# Hardware
+
+## 1. Overview
+
+The CM4/5 TPM Module is a compact hardware security stack-up designed specifically for the
+Raspberry Pi® Compute Module 4 (CM4) and Compute Module 5 (CM5). It integrates the Infineon
+OPTIGA™ TPM SLB 9670VQ2.0, a TPM 2.0-compliant Trusted Platform Module, directly onto a
+carrier PCB that mechanically and electrically interfaces with the CM4/5 high-density
+connectors.
+
+The board provides a hardware root of trust for Linux-based embedded security applications
+including secure boot, remote attestation, disk encryption (e.g. via TPM-backed LUKS),
+platform configuration measurement, and cryptographic key storage.
+
+<p align="center">
+  <img src="images/tpm-with-cm4.png" alt="CM4/5 TPM adapter board stacked up with a Raspberry Pi compute module" width="55%">
+</p>
+<p align="center"><em>Figure 1: CM4/5 TPM adapter board stacked up with a Raspberry Pi® compute module.</em></p>
+
+### 1.1 Key features
+
+- Infineon OPTIGA™ TPM SLB 9670VQ2.0 — TCG TPM 2.0 compliant
+- SPI interface, up to 43 MHz clock rate at 3.3 V
+- FIPS 140-2 Level 2 validated (Certificate #3492)
+- CC EAL4+ certified hardware security core
+- Compatible with Raspberry Pi CM4 and CM5 via dual high-density board-to-board connectors
+- 3.3 V single-supply operation with internal low-power management
+- Built-in Linux kernel support (no proprietary drivers required)
+- 24 PCRs (SHA-1 and SHA-256)
+- Hardware random number generator (NIST SP800-90A)
+- Full Endorsement Key (EK) personalization with EK certificate
+- Standard operating temperature: −20 to +85 °C
+- Compact stackable form factor; four M2.5 mounting holes
+
+### 1.2 Applications
+
+- Secure boot and measured boot (e.g. with UEFI or U-Boot TPM support)
+- Full-disk encryption with TPM-backed key unsealing
+- Remote attestation and device identity
+- IoT edge security gateways
+- Industrial embedded computing requiring hardware RoT
+- Government and defense embedded platforms
+
+## 2. Ordering information
+
+**Table 1: Device variants**
+
+| Part number | Description | Temp. range | Notes |
+| --- | --- | --- | --- |
+| CM45-TPM-R10 | CM4/5 TPM Module Rev. 1.0 | −20 to +85 °C | Standard version, SLB 9670VQ2.0 |
+
+## 3. Connector and signal description
+
+### 3.1 Board-to-board connectors
+
+The CM4/5 TPM Module uses 4 100-pin high-density board-to-board connectors (J1, J2, J3, J4)
+that are compatible with the standard Raspberry Pi CM4/CM5 connector footprint. These mate
+directly with the corresponding connectors on the Compute Module.
+
+**Table 2: Board connectors**
+
+| Ref. | Type | Pitch / pins | Part number |
+| --- | --- | --- | --- |
+| J1 & J4 | High-density B2B | 0.4 mm / 100 | DF40C-100DS-0.4V(51) |
+| J2 & J3 | High-density B2B | 0.4 mm / 100 | DF40C-100DP-0.4V(51) |
+
+### 3.2 TPM signals mapped from CM4/5
+
+The following signals are routed from the CM4/5 SPI bus and GPIO through the board-to-board
+connectors to the SLB 9670 TPM IC. The receptacle connector pin numbers (as labelled in the
+schematic) are listed alongside the TPM IC pin numbers.
+
+**Table 3: TPM signal mapping**
+
+| TPM IC pin | Signal | Receptacle pin | Direction | Description |
+| --- | --- | --- | --- | --- |
+| 19 | SCLK | 38 | Input | SPI clock (SPI mode 0 only) |
+| 20 | CS0 | 39 | Input | Chip select 0, active low; default CS |
+| 20 | CS1 | 37 | Input | Chip select 1, active low; **not populated** (DNP) |
+| 21 | MOSI | 44 | Input | SPI data from CM4/5 to TPM |
+| 24 | MISO | 40 | Output | SPI data from TPM to CM4/5 |
+| 17 | RST# | 45 | Input | Reset, active low; connect to CM4/5 GPIO24 |
+| 18 | PIRQ# | 41 | Output | Interrupt request, active low, open-drain |
+
+> **Note**
+> SPI mode 0 (CPOL=0, CPHA=0) is the only mode supported by the SLB 9670. The CM4/5 SPI
+> controller must be configured accordingly in the device tree overlay.
+
+## 4. Electrical characteristics
+
+### 4.1 Absolute maximum ratings
+
+> **Caution**
+> Exposure to conditions beyond the absolute maximum ratings may cause permanent device
+> damage. These are not operating conditions.
+
+**Table 4: Absolute maximum ratings**
+
+| Parameter | Min | Typ | Max | Unit | Condition |
+| --- | --- | --- | --- | --- | --- |
+| Supply voltage V<sub>DD</sub> | −0.3 | 3.3 | 5.0 | V | — |
+| Voltage on any pin | −0.3 | — | V<sub>DD</sub>+0.3 | V | — |
+| Ambient temperature | −20 | — | +85 | °C | Standard device |
+| Storage temperature | −40 | — | +125 | °C | — |
+| ESD (HBM, 1.5 kΩ / 100 pF) | — | — | 2000 | V | EIA/JESD22-A114-B |
+| ESD (CDM) | — | — | 500 | V | STM5.3.1-1999 |
+| Latch-up immunity | — | — | 100 | mA | EIA/JESD78 |
+
+### 4.2 Functional operating range
+
+**Table 5: Functional operating range**
+
+| Parameter | Min | Typ | Max | Unit | Condition |
+| --- | --- | --- | --- | --- | --- |
+| Supply voltage V<sub>DD</sub> | 3.0 | 3.3 | 3.6 | V | — |
+| Ambient temperature | −20 | — | +85 | °C | Standard device |
+| Useful / operating lifetime | — | — | 10 | yr | Avg. T<sub>A</sub> = 55 °C |
+
+### 4.3 Current consumption
+
+**Table 6: TPM IC current consumption (T<sub>A</sub> = 25 °C, V<sub>DD</sub> = 3.3 V)**
+
+| Parameter | Min | Typ | Max | Unit | Condition |
+| --- | --- | --- | --- | --- | --- |
+| Active mode current I<sub>VDD_Active</sub> | — | — | 25 | mA | During command execution |
+| Sleep mode current I<sub>VDD_Sleep</sub> | — | 110 | — | µA | CS# inactive; no SPI transaction |
+
+> **Note**
+> The SLB 9670 automatically enters a low-power sleep state after each completed
+> command/response transaction. No explicit sleep command is required.
+
+### 4.4 SPI interface DC characteristics
+
+**Table 7: DC characteristics — SPI pins (SCLK, CS#, MISO, MOSI, RST#, PIRQ#), V<sub>DD</sub> = 3.3 V**
+
+| Parameter | Min | Typ | Max | Unit | Condition |
+| --- | --- | --- | --- | --- | --- |
+| Input high voltage V<sub>IH</sub> | 0.7 V<sub>DD</sub> | — | V<sub>DD</sub>+0.5 | V | SCLK, MISO, MOSI, CS# |
+| Input low voltage V<sub>IL</sub> | −0.5 | — | 0.3 V<sub>DD</sub> | V | SCLK, MISO, MOSI, CS# |
+| Input leakage current | −150 | — | +150 | µA | SCLK, CS#, MISO, MOSI |
+| Output high voltage V<sub>OH</sub> | 0.9 V<sub>DD</sub> | — | — | V | I<sub>OH</sub> = −100 µA |
+| Output low voltage V<sub>OL</sub> | — | — | 0.1 V<sub>DD</sub> | V | I<sub>OL</sub> = 1.5 mA |
+| Pad input capacitance C<sub>IN</sub> | — | — | 10 | pF | — |
+| Output load capacitance C<sub>LOAD</sub> | — | — | 40 | pF | MISO |
+
+### 4.5 SPI interface AC characteristics
+
+**Table 8: AC characteristics — SPI interface, V<sub>DD</sub> = 3.3 V**
+
+| Parameter | Symbol | Min | Max | Unit | Condition |
+| --- | --- | --- | --- | --- | --- |
+| SCLK frequency | f<sub>CLK</sub> | — | 43 | MHz | t<sub>SLEW</sub> ≥ 1 V/ns |
+| SCLK frequency | f<sub>CLK</sub> | — | 38 | MHz | t<sub>SLEW</sub> < 1 V/ns |
+| CS# high time | t<sub>CS</sub> | 50 | — | ns | — |
+| CS# setup time | t<sub>CSS</sub> | 5 | — | ns | CS# fall to SCLK rise |
+| CS# hold time | t<sub>CSH</sub> | 5 | — | ns | SCLK fall to CS# rise |
+| MOSI setup time | t<sub>SU</sub> | 2 | — | ns | To SCLK rising edge |
+| MOSI hold time | t<sub>H</sub> | 3 | — | ns | From SCLK rising edge |
+| MISO valid delay | t<sub>V</sub> | 0 | 0.7 t<sub>CLKL</sub> | ns | From SCLK falling edge |
+
+## 5. TPM properties
+
+**Table 9: TPM 2.0 capabilities (SLB 9670VQ2.0)**
+
+| Property | Value |
+| --- | --- |
+| TPM specification | TCG TPM 2.0 (Family "2.0") |
+| Manufacturer ID (`TPM_PT_MANUFACTURER`) | `"IFX"` |
+| Platform Configuration Registers (PCRs) | 24 (SHA-1 and SHA-256) |
+| Free NV memory | ≥ 6,962 bytes |
+| Loaded sessions (min) | 3 (`TPM_PT_HR_LOADED_MIN`) |
+| Active sessions (max) | 64 (`TPM_PT_ACTIVE_SESSIONS_MAX`) |
+| Loaded transient objects (min) | 3 (`TPM_PT_HR_TRANSIENT_MIN`) |
+| Loaded persistent objects (min) | 7 (`TPM_PT_HR_PERSISTENT_MIN`) |
+| NV counters | ≤ 8 |
+| Command/response buffer | ≤ 1,024 bytes |
+| NV read/write size | ≤ 768 bytes |
+| I/O buffer | 1,420 bytes |
+| RNG standard | NIST SP800-90A |
+| FIPS validation | FIPS 140-2 Level 2 (Certificate #3492) |
+| CC certification | EAL4+ |
+| Linux kernel support | Built-in (no out-of-tree driver needed) |
+
+## 6. Reset timing
+
+**Table 10: Device reset timing**
+
+| Parameter | Symbol | Min | Max | Unit |
+| --- | --- | --- | --- | --- |
+| Cold (power-on) reset delay | t<sub>POR</sub> | — | 80 | µs |
+| Warm reset pulse width | t<sub>WRST</sub> | 2 | — | µs |
+| Reset inactive time (before first command) | t<sub>RSTIN</sub> | 60 | — | ms |
+
+> **Caution**
+> RST# must not be asserted within the t<sub>RSTIN</sub> window after deassertion. Violating
+> this timing during power-on or warm boot may trigger the TPM's dictionary-attack protection
+> mechanisms and potentially lock the device. Always issue `TPM2_Shutdown` before asserting
+> RST#. TPM commands must only be started after t<sub>RSTIN</sub> has expired.
+
+## 7. Mechanical dimensions
+
+**Table 11: Board mechanical specification**
+
+| Parameter | Value | Notes |
+| --- | --- | --- |
+| PCB outline | 55 mm × 40 mm | |
+| Layer count | 2 | Standard FR4 stackup |
+| PCB thickness | 1.6 mm | Standard |
+| Mounting holes | 4 × M2.5 | 3.5 mm from each board edge |
+| Corner radius | 4 × R3.5 mm | |
+| Connector J1 / J4 | Centered at 25 mm from left edge | Top board edges |
+| Connector J2 / J3 | Centered at 25 mm from left edge | Bottom board edges |
+| Surface finish | ENIG | RoHS compliant |
+| Solder mask colour | Green | — |
+
+<p align="center">
+  <img src="images/pcb-dimensions.png" alt="CM4/5 TPM Module Rev 1.0 PCB dimension drawing" width="80%">
+</p>
+<p align="center"><em>Figure 2: CM4/5 TPM Module Rev. 1.0 — PCB dimension drawing (all dimensions in mm).
+Board outline 55 × 40 mm, mounting holes 4 × M2.5 at 3.5 mm from the edges, corner radii 4 × R3.5 mm.
+Full drawing: <a href="docs/CM5_TPM_mechanical.pdf">docs/CM5_TPM_mechanical.pdf</a></em></p>
+
+## 8. Compliance and certifications
+
+**Table 12: Standards compliance**
+
+| Standard / certification | Details |
+| --- | --- |
+| TCG TPM 2.0 | Family "2.0", compliant to TCG Spec Rev. 01.16 and Rev. 01.38 |
+| FIPS 140-2 Level 2 | Certificate #3492 (16 July 2019) |
+| Common Criteria | EAL4+ certified hardware security core |
+| RoHS | PCB and components are RoHS compliant |
+| Microsoft Windows | TPM qualifies for Windows platform certification |
+| Google Chromebook | Meets Chromebook TPM certification criteria |
+| Intel TXT | Compatible with Intel Trusted Execution Technology |
+
+## 9. References
+
+1. Infineon Technologies AG, *OPTIGA™ TPM SLB 9670 TPM2.0 Data Sheet*, Rev. 1.5, 2024-08-07 — [`docs/reference/Infineon_SLB_9670VQ2.0_DataSheet_v01_04_EN.pdf`](docs/reference/Infineon_SLB_9670VQ2.0_DataSheet_v01_04_EN.pdf)
+2. TCG, *Trusted Platform Module Library (Parts 1–4)*, Family 2.0, Level 00, Rev. 01.38, 2016-09-29
+3. TCG, *TCG PC Client Platform TPM Profile (PTP) Specification*, Family 2.0, Level 00, Rev. 01.03 v22, May 2017
+4. Raspberry Pi Ltd., *Compute Module 4 Datasheet* — see also [`docs/reference/cm4io-datasheet.pdf`](docs/reference/cm4io-datasheet.pdf)
+5. Raspberry Pi Ltd., *Compute Module 5 Datasheet* — [`docs/reference/cm5-datasheet.pdf`](docs/reference/cm5-datasheet.pdf), [`docs/reference/cm5io-datasheet.pdf`](docs/reference/cm5io-datasheet.pdf)
+6. Hirose, *DF40C-100DS-0.4V(51) 2D drawing* — [`docs/reference/DF40C-100DS-0.4V-51_2D-drawing.pdf`](docs/reference/DF40C-100DS-0.4V-51_2D-drawing.pdf)
+
+### Revision history
+
+| Rev. | Date | Author | Changes |
+| --- | --- | --- | --- |
+| 1.0 | 12 September 2026 | — | Initial release |
+
+> **Disclaimer:** this document is provided for informational purposes. Specifications are
+> subject to change without notice. All trademarks are property of their respective owners.
+> Infineon and OPTIGA are trademarks of Infineon Technologies AG. Raspberry Pi is a trademark
+> of Raspberry Pi Ltd.
+
+---
+
+# Software
 
 Hardware-backed security demos for Raspberry Pi CM4/5 + TPM 2.0.
 
+Every example below is also available as a standalone script in [`scripts/`](scripts/), each
+carrying a synopsis header that states what it does, what it needs, and what it writes. The
+inline commands and the scripts are equivalent — use whichever suits you.
+
+| Script | Purpose |
+| --- | --- |
+| [`tpm-check.sh`](scripts/tpm-check.sh) | Verify the TPM is detected and responding (read-only) |
+| [`self-test.sh`](scripts/self-test.sh) | End-to-end create / load / sign test |
+| [`tpm-init.sh`](scripts/tpm-init.sh) | Clear the TPM and create a fresh primary key (**destructive**) |
+| [`luks-tpm-loop-demo.sh`](scripts/luks-tpm-loop-demo.sh) | TPM-backed LUKS unlock on a throwaway loop device |
+| [`pcr-seal-unseal.sh`](scripts/pcr-seal-unseal.sh) | Seal a secret to the PCR state and unseal it again |
+| [`ssh-tpm-setup.sh`](scripts/ssh-tpm-setup.sh) | Create a PKCS#11 token in the TPM and use it for SSH |
+| [`ssh-tpm-test.sh`](scripts/ssh-tpm-test.sh) | Prove the TPM key alone is what authenticates you |
+| [`ssh-tpm-remove.sh`](scripts/ssh-tpm-remove.sh) | List and delete TPM-backed SSH keys / tokens |
+| [`tls-tpm-demo.sh`](scripts/tls-tpm-demo.sh) | TLS server and client using a key held in the TPM |
+| [`cleanup.sh`](scripts/cleanup.sh) | Delete the on-disk artifacts the demos leave behind |
+
 ## Quick start
+
+*Script: [`scripts/tpm-check.sh`](scripts/tpm-check.sh) — runs the verification steps below.*
 
 Enable SPI and load the TPM driver overlay in config.txt so the system can communicate with the TPM 2.0 module at boot:
 
@@ -22,8 +332,11 @@ tpm2_getrandom 8 | xxd
 ./scripts/self-test.sh
 ```
 
-# Examples
-## LUKS TPM
+## Examples
+
+### LUKS TPM
+
+*Script: [`scripts/luks-tpm-loop-demo.sh`](scripts/luks-tpm-loop-demo.sh) — runs Option B end to end.*
 
 Install disk encryption support and initialize a LUKS volume, then bind it to the TPM so it can be unlocked automatically based on platform state.
 
@@ -33,7 +346,7 @@ Install disk encryption support and initialize a LUKS volume, then bind it to th
 
 > **Warning:** Do not run `luksFormat` on `/dev/mmcblk0p2` if that is your live root partition — it will destroy the running OS. Use the loop device test below instead.
 
-### Option A — real partition
+#### Option A — real partition
 
 ```
 sudo apt install cryptsetup
@@ -43,7 +356,7 @@ cryptsetup luksFormat /dev/mmcblk0p2
 systemd-cryptenroll --tpm2-device=auto /dev/mmcblk0p2
 ```
 
-### Option B — loop device (safe, no real disk needed)
+#### Option B — loop device (safe, no real disk needed)
 
 This approach creates a temporary file on disk, attaches it as a virtual block device, and runs the full LUKS + TPM flow against that. Nothing touches your real storage. Cleanup is just deleting a file.
 
@@ -90,7 +403,9 @@ rm test.img
 
 > **Note on PCR warnings:** On Raspberry Pi, `systemd-cryptenroll` may warn that selected PCRs are not initialized. This is expected — the Pi firmware does not implement measured boot the same way a PC does, so PCR-based anti-tamper enforcement is not active. The encryption itself still works correctly.
 
-## Sealing
+### Sealing
+
+*Script: [`scripts/pcr-seal-unseal.sh`](scripts/pcr-seal-unseal.sh)*
 
 Read selected PCR values, create a policy tied to those measurements, and seal a secret so it can only be unsealed when the system matches that state.
 
@@ -140,7 +455,9 @@ sudo tpm2_unseal -c seal.ctx -p session:session.ctx
 sudo tpm2_flushcontext session.ctx
 ```
 
-## SSH TPM
+### SSH TPM
+
+*Scripts: [`scripts/ssh-tpm-setup.sh`](scripts/ssh-tpm-setup.sh), [`scripts/ssh-tpm-test.sh`](scripts/ssh-tpm-test.sh), [`scripts/ssh-tpm-remove.sh`](scripts/ssh-tpm-remove.sh)*
 
 Set up a PKCS#11 interface backed by the TPM, create a token and key inside the TPM, and use it for SSH authentication without exposing private key material.
 
@@ -176,7 +493,7 @@ ssh-keygen -D $PKCS11_LIB | ssh user@host "mkdir -p ~/.ssh && cat >> ~/.ssh/auth
 ssh -I $PKCS11_LIB user@host
 ```
 
-### Testing SSH TPM authentication
+#### Testing SSH TPM authentication
 
 To prove that the TPM key specifically is being used (and not a fallback identity file or ssh-agent), use the flags below. They disable every other authentication path — only the PKCS#11 provider remains. If login succeeds, it is the TPM key. If it fails, something in the setup is incomplete.
 
@@ -187,7 +504,7 @@ PKCS11_LIB=/usr/lib/aarch64-linux-gnu/libtpm2_pkcs11.so.1
 ssh -vv -o IdentitiesOnly=yes -o IdentityAgent=none -o PreferredAuthentications=publickey -o PasswordAuthentication=no -I $PKCS11_LIB user@host
 ```
 
-### Removing TPM SSH keys
+#### Removing TPM SSH keys
 
 > **Important:** Remove the public key from all remote `~/.ssh/authorized_keys` files *before* deleting the key from the TPM. Once deleted from the TPM, the private key is gone permanently and you will lose access to any host that still expects it.
 
@@ -226,7 +543,9 @@ tpm2_ptool rmtoken --label="tpm-token"
 ssh -I $PKCS11_LIB user@host
 ```
 
-## TLS TPM
+### TLS TPM
+
+*Script: [`scripts/tls-tpm-demo.sh`](scripts/tls-tpm-demo.sh)*
 
 Create a TPM-backed key and use it with OpenSSL for a local TLS server test. The private key is generated inside the TPM and never written to disk in plaintext. OpenSSL communicates with the TPM through the `tpm2` provider for all signing operations.
 
@@ -275,3 +594,36 @@ tpm2_flushcontext -t
 tpm2_flushcontext -l
 tpm2_flushcontext -s
 ```
+
+---
+
+# Repository layout
+
+```
+.
+├── README.md
+├── docs/                                # hardware documentation
+│   ├── CM5_TPM_datasheet.pdf            # the datasheet reproduced above
+│   ├── CM5_TPM_mechanical.pdf           # PCB dimension drawing
+│   ├── CM5_TPM_overview_infographic.pdf
+│   └── reference/                       # third-party datasheets
+│       ├── Infineon_SLB_9670VQ2.0_DataSheet_v01_04_EN.pdf
+│       ├── DF40C-100DS-0.4V-51_2D-drawing.pdf
+│       ├── cm4io-datasheet.pdf
+│       ├── cm5-datasheet.pdf
+│       └── cm5io-datasheet.pdf
+├── images/                              # renders, board shots, drawings
+│   └── photos/                          # raw camera captures (JPG)
+└── scripts/                             # the examples above, as runnable scripts
+```
+
+## Gallery
+
+| | |
+| --- | --- |
+| <img src="images/board-render-iso.png" alt="Isometric render of the module" width="380"> | <img src="images/board-render-dimensions.png" alt="Render annotated with the 55 x 40 mm outline" width="380"> |
+| Isometric render | Board outline, 55 × 40 mm |
+| <img src="images/stacked-on-cm4io.png" alt="Module stacked on a CM4 IO board" width="380"> | <img src="images/tpm-with-cm4.png" alt="TPM module next to a Compute Module 4" width="380"> |
+| Stacked on a CM4 IO board | Alongside a Compute Module 4 |
+
+![CM4/5 TPM Module overview](images/overview-infographic.png)
