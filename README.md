@@ -6,8 +6,8 @@ TPM IC: Infineon OPTIGA™ TPM SLB 9670VQ2.0 · Interface: SPI · Standard: TCG 
 Revision 1.0 — 12 September 2026
 
 <p align="center">
-  <img src="images/board-top.png" alt="CM4/5 TPM Module Rev 1.0, top side"  height="300">
-  <img src="images/board-bottom.png" alt="CM4/5 TPM Module Rev 1.0, bottom side"  height="300"">
+  <img src="images/board-top.png" alt="CM4/5 TPM Module Rev 1.0, top side"  height="200">
+  <img src="images/board-bottom.png" alt="CM4/5 TPM Module Rev 1.0, bottom side"  height="200"">
 </p>
 
 This repository holds the hardware documentation for the CM4/5 TPM Module together with
