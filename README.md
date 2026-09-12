@@ -627,3 +627,7 @@ tpm2_flushcontext -s
 | Stacked on a CM4 IO board | Alongside a Compute Module 4 |
 
 ![CM4/5 TPM Module overview](images/overview-infographic.png)
+
+## Source
+
+[www.mubin.at](https://www.mubin.at)
